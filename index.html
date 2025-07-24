@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fibonacci Spiral Research Tool</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #canvas {
+            display: block;
+            cursor: crosshair;
+            flex: 1;
+        }
+
+        .controls {
+            background: rgba(0, 0, 0, 0.95);
+            padding: 15px 20px;
+            border-top: 1px solid #333;
+            backdrop-filter: blur(10px);
+            z-index: 100;
+            transition: transform 0.3s ease;
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .controls.hidden {
+            transform: translateY(100%);
+        }
+
+        .mini-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 101;
+        }
+
+        .control-btn {
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border: 1px solid #555;
+            padding: 12px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 16px;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.2s ease;
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: scale(1.1);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 10px;
+        }
+
+        label {
+            margin-bottom: 5px;
+            font-size: 11px;
+            color: #ccc;
+            text-align: center;
+        }
+
+        input[type="range"] {
+            width: 120px;
+            margin-bottom: 3px;
+        }
+
+        button {
+            background: #333;
+            color: #fff;
+            border: 1px solid #555;
+            padding: 6px 10px;
+            margin: 2px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        button:hover {
+            background: #555;
+        }
+
+        button.active {
+            background: #666;
+            color: #fff;
+        }
+
+
+
+        .title {
+            color: #ffd700;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="mini-controls">
+        <button class="control-btn" id="toggleSettings" onclick="toggleSettings()" title="Settings">⚙️</button>
+        <button class="control-btn" id="togglePauseBtn" onclick="togglePause()" title="Play/Pause">⏸️</button>
+    </div>
+    
+    <div class="controls" id="settingsPanel">
+        
+        <div class="control-group">
+            <label>Speed</label>
+            <input type="range" id="speed" min="0.1" max="5" value="1" step="0.1">
+            <span id="speedValue">1.0</span>
+        </div>
+        
+        <div class="control-group">
+            <label>Spirals</label>
+            <input type="range" id="count" min="1" max="8" value="3" step="1">
+            <span id="countValue">3</span>
+        </div>
+        
+        <div class="control-group">
+            <label>Size</label>
+            <input type="range" id="size" min="0.3" max="2" value="1" step="0.1">
+            <span id="sizeValue">1.0</span>
+        </div>
+        
+        <div class="control-group">
+            <label>Mode</label>
+            <div>
+                <button id="classic" class="active" onclick="setMode('classic')">Classic</button>
+                <button id="growing" onclick="setMode('growing')">Growing</button>
+                <button id="particle" onclick="setMode('particle')">Particle</button>
+                <button id="double" onclick="setMode('double')">Double</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Colors</label>
+            <div>
+                <button id="golden" class="active" onclick="setColors('golden')">Golden</button>
+                <button id="rainbow" onclick="setColors('rainbow')">Rainbow</button>
+                <button id="ocean" onclick="setColors('ocean')">Ocean</button>
+                <button id="fire" onclick="setColors('fire')">Fire</button>
+            </div>
+        </div>
+        
+        <div class="control-group">
+            <label>Actions</label>
+            <button onclick="reset()">🔄 Reset</button>
+        </div>
+    </div>
+    
+
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let animationId;
+        let time = 0;
+        let isPaused = false;
+        let mouseX = 0, mouseY = 0;
+        let isMouseDown = false;
+        let zoom = 1;
+        
+        // Golden ratio
+        const phi = (1 + Math.sqrt(5)) / 2;
+        
+        // Settings
+        let settings = {
+            speed: 1,
+            count: 3,
+            size: 1,
+            mode: 'classic',
+            colorScheme: 'golden'
+        };
+        
+        // Color schemes
+        const colorSchemes = {
+            golden: {
+                primary: [255, 215, 0],
+                secondary: [255, 140, 0],
+                accent: [255, 69, 0]
+            },
+            rainbow: {
+                primary: [255, 0, 128],
+                secondary: [0, 255, 128],
+                accent: [128, 0, 255]
+            },
+            ocean: {
+                primary: [0, 191, 255],
+                secondary: [0, 255, 127],
+                accent: [72, 209, 204]
+            },
+            fire: {
+                primary: [255, 69, 0],
+                secondary: [255, 140, 0],
+                accent: [255, 215, 0]
+            }
+        };
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        function getColor(scheme, t, alpha = 1) {
+            const colors = colorSchemes[scheme];
+            const color1 = colors.primary;
+            const color2 = colors.secondary;
+            const color3 = colors.accent;
+            
+            // Cycle through colors based on time
+            const cycle = (Math.sin(t) + 1) / 2;
+            const cycle2 = (Math.cos(t * 1.3) + 1) / 2;
+            
+            const r = Math.floor(color1[0] * cycle + color2[0] * (1 - cycle) + color3[0] * cycle2 * 0.3);
+            const g = Math.floor(color1[1] * cycle + color2[1] * (1 - cycle) + color3[1] * cycle2 * 0.3);
+            const b = Math.floor(color1[2] * cycle + color2[2] * (1 - cycle) + color3[2] * cycle2 * 0.3);
+            
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+        
+        function fibonacciPoint(n, offset = 0) {
+            // Convert Fibonacci index to polar coordinates
+            const angle = n * 2.399963229; // Golden angle in radians
+            const radius = Math.sqrt(n) * settings.size * 8 * zoom;
+            
+            return {
+                x: Math.cos(angle + offset) * radius,
+                y: Math.sin(angle + offset) * radius,
+                angle: angle + offset,
+                radius: radius
+            };
+        }
+        
+        function drawClassicSpiral(centerX, centerY, offset, colorT) {
+            ctx.beginPath();
+            ctx.strokeStyle = getColor(settings.colorScheme, colorT, 0.8);
+            ctx.lineWidth = 2;
+            
+            let lastPoint = null;
+            for (let i = 1; i < 200; i++) {
+                const point = fibonacciPoint(i, offset);
+                const x = centerX + point.x;
+                const y = centerY + point.y;
+                
+                if (lastPoint) {
+                    ctx.moveTo(lastPoint.x, lastPoint.y);
+                    ctx.lineTo(x, y);
+                }
+                lastPoint = { x, y };
+            }
+            ctx.stroke();
+        }
+        
+        function drawGrowingSpiral(centerX, centerY, offset, colorT) {
+            const maxPoints = Math.floor(100 + 50 * Math.sin(time * settings.speed * 0.5));
+            
+            ctx.beginPath();
+            ctx.strokeStyle = getColor(settings.colorScheme, colorT, 0.9);
+            ctx.lineWidth = 3;
+            
+            let lastPoint = null;
+            for (let i = 1; i < maxPoints; i++) {
+                const point = fibonacciPoint(i, offset);
+                const x = centerX + point.x;
+                const y = centerY + point.y;
+                
+                if (lastPoint) {
+                    const alpha = i / maxPoints;
+                    ctx.globalAlpha = alpha;
+                    ctx.moveTo(lastPoint.x, lastPoint.y);
+                    ctx.lineTo(x, y);
+                }
+                lastPoint = { x, y };
+            }
+            ctx.globalAlpha = 1;
+            ctx.stroke();
+        }
+        
+        function drawParticleSpiral(centerX, centerY, offset, colorT) {
+            for (let i = 1; i < 150; i += 2) {
+                const point = fibonacciPoint(i, offset);
+                const x = centerX + point.x;
+                const y = centerY + point.y;
+                
+                const size = 2 + Math.sin(time * settings.speed + i * 0.1) * 1;
+                const alpha = 0.7 + Math.sin(time * settings.speed * 2 + i * 0.05) * 0.3;
+                
+                ctx.beginPath();
+                ctx.fillStyle = getColor(settings.colorScheme, colorT + i * 0.01, alpha);
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function drawDoubleSpiral(centerX, centerY, offset, colorT) {
+            // Draw two intertwined spirals
+            drawClassicSpiral(centerX, centerY, offset, colorT);
+            drawClassicSpiral(centerX, centerY, offset + Math.PI, colorT + 1);
+        }
+        
+        function drawSpiral(centerX, centerY, offset, colorT) {
+            switch (settings.mode) {
+                case 'classic':
+                    drawClassicSpiral(centerX, centerY, offset, colorT);
+                    break;
+                case 'growing':
+                    drawGrowingSpiral(centerX, centerY, offset, colorT);
+                    break;
+                case 'particle':
+                    drawParticleSpiral(centerX, centerY, offset, colorT);
+                    break;
+                case 'double':
+                    drawDoubleSpiral(centerX, centerY, offset, colorT);
+                    break;
+            }
+        }
+        
+        function animate() {
+            if (!isPaused) {
+                time += 0.016 * settings.speed;
+            }
+            
+            // Clear canvas with trail effect
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2 + (mouseX - canvas.width / 2) * 0.1;
+            const centerY = canvas.height / 2 + (mouseY - canvas.height / 2) * 0.1;
+            
+            // Draw multiple spirals
+            for (let i = 0; i < settings.count; i++) {
+                const offset = (i / settings.count) * Math.PI * 2 + time * settings.speed;
+                const colorT = time + i * 0.5;
+                drawSpiral(centerX, centerY, offset, colorT);
+            }
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        function setMode(mode) {
+            settings.mode = mode;
+            document.querySelectorAll('[onclick*="setMode"]').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(mode).classList.add('active');
+        }
+        
+        function setColors(scheme) {
+            settings.colorScheme = scheme;
+            document.querySelectorAll('[onclick*="setColors"]').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(scheme).classList.add('active');
+        }
+        
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.getElementById('togglePauseBtn');
+            btn.textContent = isPaused ? '▶️' : '⏸️';
+            btn.title = isPaused ? 'Play' : 'Pause';
+        }
+        
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            const isHidden = panel.classList.contains('hidden');
+            
+            if (isHidden) {
+                panel.classList.remove('hidden');
+                console.log('Settings panel shown');
+            } else {
+                panel.classList.add('hidden');
+                console.log('Settings panel hidden');
+            }
+        }
+        
+        function reset() {
+            time = 0;
+            zoom = 1;
+        }
+        
+        // Event listeners
+        canvas.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            zoom *= e.deltaY > 0 ? 0.95 : 1.05;
+            zoom = Math.max(0.1, Math.min(3, zoom));
+        });
+        
+        // Control updates
+        document.getElementById('speed').addEventListener('input', (e) => {
+            settings.speed = parseFloat(e.target.value);
+            document.getElementById('speedValue').textContent = settings.speed.toFixed(1);
+        });
+        
+        document.getElementById('count').addEventListener('input', (e) => {
+            settings.count = parseInt(e.target.value);
+            document.getElementById('countValue').textContent = settings.count;
+        });
+        
+        document.getElementById('size').addEventListener('input', (e) => {
+            settings.size = parseFloat(e.target.value);
+            document.getElementById('sizeValue').textContent = settings.size.toFixed(1);
+        });
+        
+        // Initialize
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        animate();
+    </script>
+</body>
+</html>

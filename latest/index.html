@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fibonacci Visual Meditation Tool</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        #canvas {
+            display: block;
+            cursor: crosshair;
+            flex: 1;
+        }
+
+        .controls {
+            background: linear-gradient(180deg, rgba(0,0,0,0.95) 0%, rgba(20,20,20,0.98) 100%);
+            padding: 20px;
+            border-top: 1px solid #333;
+            backdrop-filter: blur(15px);
+            z-index: 100;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 25px;
+            align-items: start;
+        }
+
+        .controls.hidden {
+            transform: translateY(100%);
+        }
+
+        .mini-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 12px;
+            z-index: 101;
+        }
+
+        .control-btn {
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            border: 1px solid #555;
+            padding: 14px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: rgba(0, 0, 0, 0.9);
+            transform: scale(1.05);
+            border-color: #777;
+        }
+
+        .control-section {
+            background: rgba(40, 40, 40, 0.6);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #444;
+        }
+
+        .section-title {
+            color: #ffd700;
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+
+        .preset-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .preset-btn {
+            background: linear-gradient(135deg, #333 0%, #444 100%);
+            color: #fff;
+            border: 1px solid #555;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .preset-btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .preset-btn:hover:before {
+            left: 100%;
+        }
+
+        .preset-btn:hover {
+            background: linear-gradient(135deg, #444 0%, #555 100%);
+            border-color: #666;
+            transform: translateY(-2px);
+        }
+
+        .preset-btn.active {
+            background: linear-gradient(135deg, #ffd700 0%, #ffb000 100%);
+            color: #000;
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: #ccc;
+            font-weight: 500;
+        }
+
+        .control-value {
+            color: #ffd700;
+            font-weight: 600;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        .precision-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .precision-input {
+            flex: 1;
+            background: #222;
+            border: 1px solid #555;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .precision-input:focus {
+            outline: none;
+            border-color: #ffd700;
+            box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
+        }
+
+        .micro-btn {
+            background: #333;
+            border: 1px solid #555;
+            color: #ccc;
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .micro-btn:hover {
+            background: #444;
+            color: #fff;
+        }
+
+        .mode-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .mode-btn {
+            background: #333;
+            color: #ccc;
+            border: 1px solid #555;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 11px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .mode-btn:hover {
+            background: #444;
+            color: #fff;
+        }
+
+        .mode-btn.active {
+            background: #555;
+            color: #ffd700;
+            border-color: #777;
+        }
+
+        .color-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+        }
+
+        .color-btn {
+            aspect-ratio: 1;
+            border: 2px solid #555;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .color-btn.active {
+            border-color: #ffd700;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+        }
+
+        .golden { background: linear-gradient(135deg, #ffd700, #ff8c00); }
+        .rainbow { background: linear-gradient(135deg, #ff0080, #00ff80, #8000ff); }
+        .ocean { background: linear-gradient(135deg, #00bfff, #00ff7f, #48d1cc); }
+        .fire { background: linear-gradient(135deg, #ff4500, #ff8c00, #ffd700); }
+
+        .state-indicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 1px solid #ffd700;
+            font-size: 12px;
+            color: #ffd700;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    
+    <div class="state-indicator" id="stateIndicator">Ready to Focus</div>
+    
+    <div class="mini-controls">
+        <button class="control-btn" id="toggleSettings" onclick="toggleSettings()" title="Settings">⚙️</button>
+        <button class="control-btn" id="togglePauseBtn" onclick="togglePause()" title="Play/Pause">⏸️</button>
+    </div>
+    
+    <div class="controls" id="settingsPanel">
+        
+        <div class="control-section">
+            <div class="section-title">🧘 Mental State Presets</div>
+            <div class="preset-grid">
+                <button class="preset-btn active" onclick="setPreset('mindful')">Mindful</button>
+                <button class="preset-btn" onclick="setPreset('focus')">Sharp Focus</button>
+                <button class="preset-btn" onclick="setPreset('compassionate')">Compassionate</button>
+                <button class="preset-btn" onclick="setPreset('joyful')">Joyful</button>
+                <button class="preset-btn" onclick="setPreset('active')">Active Focus</button>
+                <button class="preset-btn" onclick="setPreset('disciplined')">Disciplined</button>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <div class="section-title">⚡ Precision Controls</div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Animation Speed</span>
+                    <span class="control-value" id="speedValue">1.00</span>
+                </div>
+                <div class="precision-control">
+                    <button class="micro-btn" onclick="adjustSpeed(-0.1)">-</button>
+                    <input type="number" class="precision-input" id="speedInput" value="1.00" step="0.01" min="0.01" max="10">
+                    <button class="micro-btn" onclick="adjustSpeed(0.1)">+</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Spiral Count</span>
+                    <span class="control-value" id="countValue">3</span>
+                </div>
+                <div class="precision-control">
+                    <button class="micro-btn" onclick="adjustCount(-1)">-</button>
+                    <input type="number" class="precision-input" id="countInput" value="3" step="1" min="1" max="12">
+                    <button class="micro-btn" onclick="adjustCount(1)">+</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Scale Factor</span>
+                    <span class="control-value" id="sizeValue">1.00</span>
+                </div>
+                <div class="precision-control">
+                    <button class="micro-btn" onclick="adjustSize(-0.1)">-</button>
+                    <input type="number" class="precision-input" id="sizeInput" value="1.00" step="0.05" min="0.1" max="5">
+                    <button class="micro-btn" onclick="adjustSize(0.1)">+</button>
+                </div>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-label">
+                    <span>Depth Breathing</span>
+                    <span class="control-value" id="depthValue">0.30</span>
+                </div>
+                <div class="precision-control">
+                    <button class="micro-btn" onclick="adjustDepth(-0.1)">-</button>
+                    <input type="number" class="precision-input" id="depthInput" value="0.30" step="0.05" min="0" max="1">
+                    <button class="micro-btn" onclick="adjustDepth(0.1)">+</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <div class="section-title">🎨 Visual Mode</div>
+            <div class="mode-buttons">
+                <button class="mode-btn active" id="classic" onclick="setMode('classic')">Classic</button>
+                <button class="mode-btn" id="growing" onclick="setMode('growing')">Breathing</button>
+                <button class="mode-btn" id="particle" onclick="setMode('particle')">Particle</button>
+                <button class="mode-btn" id="double" onclick="setMode('double')">Double</button>
+            </div>
+            
+            <div class="section-title">🌈 Color Harmony</div>
+            <div class="color-buttons">
+                <button class="color-btn golden active" onclick="setColors('golden')" title="Golden Ratio"></button>
+                <button class="color-btn rainbow" onclick="setColors('rainbow')" title="Rainbow Flow"></button>
+                <button class="color-btn ocean" onclick="setColors('ocean')" title="Ocean Depths"></button>
+                <button class="color-btn fire" onclick="setColors('fire')" title="Fire Energy"></button>
+            </div>
+        </div>
+        
+        <div class="control-section">
+            <div class="section-title">🎯 Actions</div>
+            <button class="preset-btn" onclick="reset()">🔄 Reset to Default</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let animationId;
+        let time = 0;
+        let isPaused = false;
+        let mouseX = 0, mouseY = 0;
+        let zoom = 1;
+        let currentPreset = 'mindful';
+        
+        // Golden ratio
+        const phi = (1 + Math.sqrt(5)) / 2;
+        
+        // Settings
+        let settings = {
+            speed: 1.0,
+            count: 3,
+            size: 1.0,
+            mode: 'classic',
+            colorScheme: 'golden',
+            depthIntensity: 0.3
+        };
+        
+        // Mental state presets with carefully calibrated parameters
+        const presets = {
+            mindful: {
+                speed: 0.6,
+                count: 2,
+                size: 1.2,
+                mode: 'growing',
+                colorScheme: 'golden',
+                depthIntensity: 0.4,
+                description: 'Slow, breathing rhythm for present-moment awareness'
+            },
+            focus: {
+                speed: 1.8,
+                count: 1,
+                size: 0.8,
+                mode: 'classic',
+                colorScheme: 'ocean',
+                depthIntensity: 0.2,
+                description: 'Single point concentration for sharp mental clarity'
+            },
+            compassionate: {
+                speed: 0.4,
+                count: 4,
+                size: 1.5,
+                mode: 'growing',
+                colorScheme: 'golden',
+                depthIntensity: 0.5,
+                description: 'Gentle, warm patterns for heart-centered states'
+            },
+            joyful: {
+                speed: 2.2,
+                count: 5,
+                size: 1.0,
+                mode: 'particle',
+                colorScheme: 'rainbow',
+                depthIntensity: 0.6,
+                description: 'Dynamic, colorful energy for elevated mood'
+            },
+            active: {
+                speed: 3.0,
+                count: 3,
+                size: 0.9,
+                mode: 'double',
+                colorScheme: 'fire',
+                depthIntensity: 0.3,
+                description: 'Energetic patterns for sustained concentration'
+            },
+            disciplined: {
+                speed: 1.0,
+                count: 1,
+                size: 1.0,
+                mode: 'classic',
+                colorScheme: 'ocean',
+                depthIntensity: 0.1,
+                description: 'Structured, precise patterns for self-regulation'
+            }
+        };
+        
+        // Color schemes
+        const colorSchemes = {
+            golden: {
+                primary: [255, 215, 0],
+                secondary: [255, 140, 0],
+                accent: [255, 69, 0]
+            },
+            rainbow: {
+                primary: [255, 0, 128],
+                secondary: [0, 255, 128],
+                accent: [128, 0, 255]
+            },
+            ocean: {
+                primary: [0, 191, 255],
+                secondary: [0, 255, 127],
+                accent: [72, 209, 204]
+            },
+            fire: {
+                primary: [255, 69, 0],
+                secondary: [255, 140, 0],
+                accent: [255, 215, 0]
+            }
+        };
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        function getColor(scheme, t, alpha = 1) {
+            const colors = colorSchemes[scheme];
+            const color1 = colors.primary;
+            const color2 = colors.secondary;
+            const color3 = colors.accent;
+            
+            const cycle = (Math.sin(t) + 1) / 2;
+            const cycle2 = (Math.cos(t * 1.3) + 1) / 2;
+            
+            const r = Math.floor(color1[0] * cycle + color2[0] * (1 - cycle) + color3[0] * cycle2 * 0.3);
+            const g = Math.floor(color1[1] * cycle + color2[1] * (1 - cycle) + color3[1] * cycle2 * 0.3);
+            const b = Math.floor(color1[2] * cycle + color2[2] * (1 - cycle) + color3[2] * cycle2 * 0.3);
+            
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        }
+        
+        function fibonacciPoint(n, offset = 0) {
+            const angle = n * 2.399963229;
+            const radius = Math.sqrt(n) * settings.size * 8 * zoom;
+            
+            return {
+                x: Math.cos(angle + offset) * radius,
+                y: Math.sin(angle + offset) * radius,
+                angle: angle + offset,
+                radius: radius
+            };
+        }
+        
+        function drawClassicSpiral(centerX, centerY, offset, colorT) {
+            ctx.beginPath();
+            ctx.strokeStyle = getColor(settings.colorScheme, colorT, 0.8);
+            ctx.lineWidth = 2;
+            
+            let lastPoint = null;
+            for (let i = 1; i < 200; i++) {
+                const point = fibonacciPoint(i, offset);
+                const x = centerX + point.x;
+                const y = centerY + point.y;
+                
+                if (lastPoint) {
+                    ctx.moveTo(lastPoint.x, lastPoint.y);
+                    ctx.lineTo(x, y);
+                }
+                lastPoint = { x, y };
+            }
+            ctx.stroke();
+        }
+        
+        function drawGrowingSpiral(centerX, centerY, offset, colorT) {
+            const maxPoints = Math.floor(100 + 50 * Math.sin(time * settings.speed * 0.5));
+            
+            ctx.beginPath();
+            ctx.strokeStyle = getColor(settings.colorScheme, colorT, 0.9);
+            ctx.lineWidth = 3;
+            
+            let lastPoint = null;
+            for (let i = 1; i < maxPoints; i++) {
+                const point = fibonacciPoint(i, offset);
+                const x = centerX + point.x;
+                const y = centerY + point.y;
+                
+                if (lastPoint) {
+                    const alpha = i / maxPoints;
+                    ctx.globalAlpha = alpha;
+                    ctx.moveTo(lastPoint.x, lastPoint.y);
+                    ctx.lineTo(x, y);
+                }
+                lastPoint = { x, y };
+            }
+            ctx.globalAlpha = 1;
+            ctx.stroke();
+        }
+        
+        function drawParticleSpiral(centerX, centerY, offset, colorT) {
+            for (let i = 1; i < 150; i += 2) {
+                const point = fibonacciPoint(i, offset);
+                const x = centerX + point.x;
+                const y = centerY + point.y;
+                
+                const size = 2 + Math.sin(time * settings.speed + i * 0.1) * 1;
+                const alpha = 0.7 + Math.sin(time * settings.speed * 2 + i * 0.05) * 0.3;
+                
+                ctx.beginPath();
+                ctx.fillStyle = getColor(settings.colorScheme, colorT + i * 0.01, alpha);
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        function drawDoubleSpiral(centerX, centerY, offset, colorT) {
+            drawClassicSpiral(centerX, centerY, offset, colorT);
+            drawClassicSpiral(centerX, centerY, offset + Math.PI, colorT + 1);
+        }
+        
+        function drawSpiral(centerX, centerY, offset, colorT) {
+            switch (settings.mode) {
+                case 'classic':
+                    drawClassicSpiral(centerX, centerY, offset, colorT);
+                    break;
+                case 'growing':
+                    drawGrowingSpiral(centerX, centerY, offset, colorT);
+                    break;
+                case 'particle':
+                    drawParticleSpiral(centerX, centerY, offset, colorT);
+                    break;
+                case 'double':
+                    drawDoubleSpiral(centerX, centerY, offset, colorT);
+                    break;
+            }
+        }
+        
+        function animate() {
+            if (!isPaused) {
+                time += 0.016 * settings.speed;
+            }
+            
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2 + (mouseX - canvas.width / 2) * 0.1;
+            const centerY = canvas.height / 2 + (mouseY - canvas.height / 2) * 0.1;
+            
+            // Calculate depth breathing effect
+            const breathingCycle = Math.sin(time * settings.speed * 0.8) * settings.depthIntensity;
+            const depthScale = 1.0 + breathingCycle;
+            
+            // Apply depth transformation
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.scale(depthScale, depthScale);
+            ctx.translate(-centerX, -centerY);
+            
+            for (let i = 0; i < settings.count; i++) {
+                const offset = (i / settings.count) * Math.PI * 2 + time * settings.speed;
+                const colorT = time + i * 0.5;
+                drawSpiral(centerX, centerY, offset, colorT);
+            }
+            
+            ctx.restore();
+            
+            animationId = requestAnimationFrame(animate);
+        }
+        
+        function setPreset(presetName) {
+            currentPreset = presetName;
+            const preset = presets[presetName];
+            
+            // Update settings
+            settings.speed = preset.speed;
+            settings.count = preset.count;
+            settings.size = preset.size;
+            settings.mode = preset.mode;
+            settings.colorScheme = preset.colorScheme;
+            settings.depthIntensity = preset.depthIntensity;
+            
+            // Update UI
+            updateAllControls();
+            updatePresetButtons();
+            updateStateIndicator();
+        }
+        
+        function updateStateIndicator() {
+            const indicator = document.getElementById('stateIndicator');
+            const preset = presets[currentPreset];
+            indicator.textContent = `${currentPreset.charAt(0).toUpperCase() + currentPreset.slice(1)} State`;
+        }
+        
+        function updateAllControls() {
+            document.getElementById('speedInput').value = settings.speed.toFixed(2);
+            document.getElementById('speedValue').textContent = settings.speed.toFixed(2);
+            document.getElementById('countInput').value = settings.count;
+            document.getElementById('countValue').textContent = settings.count;
+            document.getElementById('sizeInput').value = settings.size.toFixed(2);
+            document.getElementById('sizeValue').textContent = settings.size.toFixed(2);
+            document.getElementById('depthInput').value = settings.depthIntensity.toFixed(2);
+            document.getElementById('depthValue').textContent = settings.depthIntensity.toFixed(2);
+            
+            setMode(settings.mode);
+            setColors(settings.colorScheme);
+        }
+        
+        function updatePresetButtons() {
+            document.querySelectorAll('.preset-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[onclick="setPreset('${currentPreset}')"]`).classList.add('active');
+        }
+        
+        function adjustSpeed(delta) {
+            settings.speed = Math.max(0.01, Math.min(10, settings.speed + delta));
+            document.getElementById('speedInput').value = settings.speed.toFixed(2);
+            document.getElementById('speedValue').textContent = settings.speed.toFixed(2);
+        }
+        
+        function adjustCount(delta) {
+            settings.count = Math.max(1, Math.min(12, settings.count + delta));
+            document.getElementById('countInput').value = settings.count;
+            document.getElementById('countValue').textContent = settings.count;
+        }
+        
+        function adjustSize(delta) {
+            settings.size = Math.max(0.1, Math.min(5, settings.size + delta));
+            document.getElementById('sizeInput').value = settings.size.toFixed(2);
+            document.getElementById('sizeValue').textContent = settings.size.toFixed(2);
+        }
+        
+        function adjustDepth(delta) {
+            settings.depthIntensity = Math.max(0, Math.min(1, settings.depthIntensity + delta));
+            document.getElementById('depthInput').value = settings.depthIntensity.toFixed(2);
+            document.getElementById('depthValue').textContent = settings.depthIntensity.toFixed(2);
+        }
+        
+        function setMode(mode) {
+            settings.mode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(mode).classList.add('active');
+        }
+        
+        function setColors(scheme) {
+            settings.colorScheme = scheme;
+            document.querySelectorAll('.color-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.color-btn.${scheme}`).classList.add('active');
+        }
+        
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.getElementById('togglePauseBtn');
+            btn.textContent = isPaused ? '▶️' : '⏸️';
+            btn.title = isPaused ? 'Play' : 'Pause';
+        }
+        
+        function toggleSettings() {
+            const panel = document.getElementById('settingsPanel');
+            panel.classList.toggle('hidden');
+        }
+        
+        function reset() {
+            setPreset('mindful');
+            time = 0;
+            zoom = 1;
+        }
+        
+        // Event listeners
+        canvas.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            zoom *= e.deltaY > 0 ? 0.95 : 1.05;
+            zoom = Math.max(0.1, Math.min(3, zoom));
+        });
+        
+        // Precision input listeners
+        ['speedInput', 'countInput', 'sizeInput', 'depthInput'].forEach(id => {
+            document.getElementById(id).addEventListener('input', function() {
+                const value = parseFloat(this.value);
+                if (id === 'speedInput') {
+                    settings.speed = Math.max(0.01, Math.min(10, value || 0.01));
+                    document.getElementById('speedValue').textContent = settings.speed.toFixed(2);
+                } else if (id === 'countInput') {
+                    settings.count = Math.max(1, Math.min(12, parseInt(value) || 1));
+                    document.getElementById('countValue').textContent = settings.count;
+                } else if (id === 'sizeInput') {
+                    settings.size = Math.max(0.1, Math.min(5, value || 0.1));
+                    document.getElementById('sizeValue').textContent = settings.size.toFixed(2);
+                } else if (id === 'depthInput') {
+                    settings.depthIntensity = Math.max(0, Math.min(1, value || 0));
+                    document.getElementById('depthValue').textContent = settings.depthIntensity.toFixed(2);
+                }
+            });
+        });
+        
+        // Initialize
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        setPreset('mindful'); // Start with mindful preset
+        animate();
+    </script>
+</body>
+</html>
